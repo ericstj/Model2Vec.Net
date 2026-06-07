@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Model2Vec.Net\Model2Vec.Net.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="oracle_potion_base_2m.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="oracle_distilroberta_base_ca_v2.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <PotionModelDir>$(MSBuildProjectDirectory)\models\potion-base-2M</PotionModelDir>
+    <PotionModelBaseUrl>https://huggingface.co/minishlab/potion-base-2M/resolve/main</PotionModelBaseUrl>
+    <DistilRobertaModelDir>$(MSBuildProjectDirectory)\models\distilroberta-base-ca-v2</DistilRobertaModelDir>
+    <DistilRobertaModelBaseUrl>https://huggingface.co/Jarbas/ovos-model2vec-intents-distilroberta-base-ca-v2/resolve/main</DistilRobertaModelBaseUrl>
+  </PropertyGroup>
+
+  <Target Name="DownloadModel2VecModel" AfterTargets="Build">
+    <DownloadFile Condition="!Exists('$(PotionModelDir)\model.safetensors')"
+                  SourceUrl="$(PotionModelBaseUrl)/model.safetensors"
+                  DestinationFolder="$(PotionModelDir)"
+                  DestinationFileName="model.safetensors"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(PotionModelDir)\tokenizer.json')"
+                  SourceUrl="$(PotionModelBaseUrl)/tokenizer.json"
+                  DestinationFolder="$(PotionModelDir)"
+                  DestinationFileName="tokenizer.json"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(PotionModelDir)\config.json')"
+                  SourceUrl="$(PotionModelBaseUrl)/config.json"
+                  DestinationFolder="$(PotionModelDir)"
+                  DestinationFileName="config.json"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(DistilRobertaModelDir)\model.safetensors')"
+                  SourceUrl="$(DistilRobertaModelBaseUrl)/model.safetensors"
+                  DestinationFolder="$(DistilRobertaModelDir)"
+                  DestinationFileName="model.safetensors"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(DistilRobertaModelDir)\tokenizer.json')"
+                  SourceUrl="$(DistilRobertaModelBaseUrl)/tokenizer.json"
+                  DestinationFolder="$(DistilRobertaModelDir)"
+                  DestinationFileName="tokenizer.json"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(DistilRobertaModelDir)\config.json')"
+                  SourceUrl="$(DistilRobertaModelBaseUrl)/config.json"
+                  DestinationFolder="$(DistilRobertaModelDir)"
+                  DestinationFileName="config.json"
+                  Retries="2" />
+    <Copy SourceFiles="$(PotionModelDir)\model.safetensors;$(PotionModelDir)\tokenizer.json;$(PotionModelDir)\config.json"
+          DestinationFolder="$(OutDir)models\potion-base-2M"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(DistilRobertaModelDir)\model.safetensors;$(DistilRobertaModelDir)\tokenizer.json;$(DistilRobertaModelDir)\config.json"
+          DestinationFolder="$(OutDir)models\distilroberta-base-ca-v2"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

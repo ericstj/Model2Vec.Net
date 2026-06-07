@@ -1,0 +1,13 @@
+# Build artifacts
+bin/
+obj/
+artifacts/
+BenchmarkDotNet.Artifacts/
+
+# Downloaded Model2Vec models
+*.safetensors
+tests/Model2Vec.Net.Tests/models/
+bench/Model2Vec.Net.Benchmarks/models/
+
+# Python oracle helpers
+__pycache__/
