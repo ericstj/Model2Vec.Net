@@ -25,6 +25,8 @@ Model2Vec inference is:
 - Supports Model2Vec vocabulary-quantization `weights` and `mapping` tensors.
 - Uses `Microsoft.ML.Tokenizers` for Hugging Face WordPiece and byte-level BPE tokenizers.
 - SIMD-accelerated scaling and normalization via `System.Numerics.Tensors`.
+- Implements `Microsoft.Extensions.AI` `IEmbeddingGenerator<string, Embedding<float>>`
+  for use in the .NET AI ecosystem (RAG, vector stores, semantic search).
 
 ## Tokenizer support
 

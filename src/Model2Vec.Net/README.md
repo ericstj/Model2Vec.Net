@@ -49,6 +49,26 @@ float[][] embeddings = model.Encode([
 
 `Model2VecModel` is immutable after loading and safe to share across threads.
 
+## Microsoft.Extensions.AI
+
+`Model2VecModel` implements [`Microsoft.Extensions.AI`](https://learn.microsoft.com/dotnet/ai/microsoft-extensions-ai)
+`IEmbeddingGenerator<string, Embedding<float>>`, so it plugs directly into the
+.NET AI ecosystem (RAG pipelines, vector stores, semantic search):
+
+```csharp
+using Microsoft.Extensions.AI;
+using Model2VecNet;
+
+IEmbeddingGenerator<string, Embedding<float>> generator = Model2VecModel.Load(@"C:\models\potion-base-2M");
+
+GeneratedEmbeddings<Embedding<float>> embeddings = await generator.GenerateAsync(["First sentence", "Second sentence"]);
+ReadOnlyMemory<float> vector = embeddings[0].Vector;
+```
+
+This composes with any `Microsoft.Extensions.VectorData` store (for example
+[`Hnsw.Net`](https://github.com/ericstj/Hnsw.Net)) to embed and index text with no
+external service.
+
 ## Scope: inference only
 
 This package loads a distilled Model2Vec static model and encodes text. It does
