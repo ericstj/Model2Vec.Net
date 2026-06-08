@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Xunit.SkippableFact" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,9 +25,11 @@
 
   <PropertyGroup>
     <PotionModelDir>$(MSBuildProjectDirectory)\models\potion-base-2M</PotionModelDir>
-    <PotionModelBaseUrl>https://huggingface.co/minishlab/potion-base-2M/resolve/main</PotionModelBaseUrl>
+    <PotionModelBaseUrl>https://huggingface.co/minishlab/potion-base-2M/resolve/389b9f64be5aa4ae7a6bc6fe95ef20ce485ae5da</PotionModelBaseUrl>
     <DistilRobertaModelDir>$(MSBuildProjectDirectory)\models\distilroberta-base-ca-v2</DistilRobertaModelDir>
-    <DistilRobertaModelBaseUrl>https://huggingface.co/Jarbas/ovos-model2vec-intents-distilroberta-base-ca-v2/resolve/main</DistilRobertaModelBaseUrl>
+    <DistilRobertaModelBaseUrl>https://huggingface.co/Jarbas/ovos-model2vec-intents-distilroberta-base-ca-v2/resolve/bfea823ba8fc6d9585109092faace9485ff0d5b2</DistilRobertaModelBaseUrl>
+    <BgeM3TokenizerDir>$(MSBuildProjectDirectory)\models\bge-m3-tokenizer</BgeM3TokenizerDir>
+    <BgeM3BaseUrl>https://huggingface.co/BAAI/bge-m3/resolve/5617a9f61b028005a4858fdac845db406aefb181</BgeM3BaseUrl>
   </PropertyGroup>
 
   <Target Name="DownloadModel2VecModel" AfterTargets="Build">
@@ -65,6 +68,19 @@
           SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(DistilRobertaModelDir)\model.safetensors;$(DistilRobertaModelDir)\tokenizer.json;$(DistilRobertaModelDir)\config.json"
           DestinationFolder="$(OutDir)models\distilroberta-base-ca-v2"
+          SkipUnchangedFiles="true" />
+    <DownloadFile Condition="!Exists('$(BgeM3TokenizerDir)\tokenizer.json')"
+                  SourceUrl="$(BgeM3BaseUrl)/tokenizer.json"
+                  DestinationFolder="$(BgeM3TokenizerDir)"
+                  DestinationFileName="tokenizer.json"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(BgeM3TokenizerDir)\sentencepiece.model')"
+                  SourceUrl="$(BgeM3BaseUrl)/sentencepiece.bpe.model"
+                  DestinationFolder="$(BgeM3TokenizerDir)"
+                  DestinationFileName="sentencepiece.model"
+                  Retries="2" />
+    <Copy SourceFiles="$(BgeM3TokenizerDir)\tokenizer.json;$(BgeM3TokenizerDir)\sentencepiece.model"
+          DestinationFolder="$(OutDir)models\bge-m3-tokenizer"
           SkipUnchangedFiles="true" />
   </Target>
 

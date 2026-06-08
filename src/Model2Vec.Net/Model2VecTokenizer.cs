@@ -13,6 +13,7 @@ internal sealed class Model2VecTokenizer
     private readonly int _medianTokenLength;
     private readonly bool _byteLevelBpe;
     private readonly bool _addPrefixSpace;
+    private readonly Dictionary<string, int>? _unigramVocab;
 
     private Model2VecTokenizer(
         Tokenizer tokenizer,
@@ -20,7 +21,8 @@ internal sealed class Model2VecTokenizer
         HashSet<int> unknownTokenIds,
         int medianTokenLength,
         bool byteLevelBpe = false,
-        bool addPrefixSpace = false)
+        bool addPrefixSpace = false,
+        Dictionary<string, int>? unigramVocab = null)
     {
         _tokenizer = tokenizer;
         VocabularyCount = vocabularyCount;
@@ -28,6 +30,7 @@ internal sealed class Model2VecTokenizer
         _medianTokenLength = medianTokenLength;
         _byteLevelBpe = byteLevelBpe;
         _addPrefixSpace = addPrefixSpace;
+        _unigramVocab = unigramVocab;
     }
 
     public int VocabularyCount { get; }
@@ -62,9 +65,27 @@ internal sealed class Model2VecTokenizer
             }
         }
 
-        IReadOnlyList<int> encodedIds = _byteLevelBpe
-            ? _tokenizer.EncodeToIds(ToByteLevelText(text, _addPrefixSpace), considerPreTokenization: false, considerNormalization: false)
-            : _tokenizer.EncodeToIds(text, considerPreTokenization: true, considerNormalization: true);
+        IReadOnlyList<int> encodedIds;
+        if (_unigramVocab is not null)
+        {
+            IReadOnlyList<EncodedToken> tokens = _tokenizer.EncodeToTokens(text, out _, considerPreTokenization: true, considerNormalization: true);
+            var mapped = new List<int>(tokens.Count);
+            foreach (EncodedToken token in tokens)
+            {
+                if (_unigramVocab.TryGetValue(token.Value, out int id))
+                {
+                    mapped.Add(id);
+                }
+            }
+
+            encodedIds = mapped;
+        }
+        else
+        {
+            encodedIds = _byteLevelBpe
+                ? _tokenizer.EncodeToIds(ToByteLevelText(text, _addPrefixSpace), considerPreTokenization: false, considerNormalization: false)
+                : _tokenizer.EncodeToIds(text, considerPreTokenization: true, considerNormalization: true);
+        }
 
         var ids = new List<int>(encodedIds.Count);
         foreach (int id in encodedIds)
@@ -164,12 +185,23 @@ internal sealed class Model2VecTokenizer
 
         using FileStream stream = File.OpenRead(sentencePieceModel);
         SentencePieceTokenizer tokenizer = SentencePieceTokenizer.Create(stream, addBeginningOfSentence: false, addEndOfSentence: false, ReadSpecialTokens(root));
-        return new Model2VecTokenizer(tokenizer, vocab.Count, unknownTokenIds, MedianTokenLength(vocab));
+        return new Model2VecTokenizer(tokenizer, vocab.Count, unknownTokenIds, MedianTokenLength(vocab), unigramVocab: vocab);
     }
 
     private static Dictionary<string, int> ReadVocabulary(JsonElement vocabElement)
     {
         var vocab = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (vocabElement.ValueKind == JsonValueKind.Array)
+        {
+            int id = 0;
+            foreach (JsonElement entry in vocabElement.EnumerateArray())
+            {
+                vocab[entry[0].GetString() ?? ""] = id++;
+            }
+
+            return vocab;
+        }
+
         foreach (JsonProperty property in vocabElement.EnumerateObject())
         {
             vocab.Add(property.Name, property.Value.GetInt32());

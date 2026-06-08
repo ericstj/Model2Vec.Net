@@ -14,7 +14,7 @@ public sealed class Model2VecOracleTests
         new ModelCase("distilroberta-base-ca-v2", "oracle_distilroberta_base_ca_v2.json", "MODEL2VEC_DISTILROBERTA_BASE_CA_V2")
     };
 
-    [Theory]
+    [SkippableTheory]
     [MemberData(nameof(Models))]
     public void ModelLoads(ModelCase modelCase)
     {
@@ -24,7 +24,7 @@ public sealed class Model2VecOracleTests
         Assert.Equal(oracle.dimension, model.Dimension);
     }
 
-    [Theory]
+    [SkippableTheory]
     [MemberData(nameof(Models))]
     public void EmbeddingsMatchPythonOracle(ModelCase modelCase)
     {
@@ -45,7 +45,7 @@ public sealed class Model2VecOracleTests
         }
     }
 
-    [Theory]
+    [SkippableTheory]
     [MemberData(nameof(Models))]
     public void EmptyStringEncodesAsZeroVector(ModelCase modelCase)
     {
@@ -56,7 +56,7 @@ public sealed class Model2VecOracleTests
         Assert.All(actual, value => Assert.Equal(0.0f, value));
     }
 
-    [Fact]
+    [SkippableFact]
     public void TokenizerIdsMatchReferenceSamples()
     {
         var potion = new ModelCase("potion-base-2M", "oracle_potion_base_2m.json", "MODEL2VEC_POTION_BASE_2M");
@@ -71,6 +71,19 @@ public sealed class Model2VecOracleTests
         Assert.Equal(
             [4339, 976, 20283, 52],
             Tokenize(ModelPath(distilRoberta), " Olá mundo!"));
+    }
+
+    [SkippableFact]
+    public void UnigramTokenizerMatchesReference()
+    {
+        string dir = UnigramTokenizerDir();
+
+        Assert.Equal([35378, 8999], Tokenize(dir, "Hello world"));
+        Assert.Equal([91906, 3307, 38], Tokenize(dir, "Olá mundo!"));
+        Assert.Equal([26216, 15154, 13946], Tokenize(dir, "café déjà vu"));
+        Assert.Equal([6, 124084, 3221], Tokenize(dir, "你好世界"));
+        Assert.Equal([103332, 7, 37638, 6, 121317, 38], Tokenize(dir, "Numbers 123 456!"));
+        Assert.Equal([1813, 18454, 11373], Tokenize(dir, "Привет мир"));
     }
 
     private static string ModelPath(ModelCase modelCase)
@@ -88,7 +101,17 @@ public sealed class Model2VecOracleTests
             return env;
         }
 
-        throw new SkipException($"{modelCase.Name} model files not found. Build should download them, or set {modelCase.EnvironmentVariable}.");
+        Skip.If(true, $"{modelCase.Name} model files not found. Build should download them, or set {modelCase.EnvironmentVariable}.");
+        return local;
+    }
+
+    private static string UnigramTokenizerDir()
+    {
+        string dir = Path.Combine(AppContext.BaseDirectory, "models", "bge-m3-tokenizer");
+        Skip.IfNot(
+            File.Exists(Path.Combine(dir, "tokenizer.json")) && File.Exists(Path.Combine(dir, "sentencepiece.model")),
+            "bge-m3 Unigram tokenizer fixture not found. Build should download tokenizer.json and sentencepiece.model.");
+        return dir;
     }
 
     private static OracleData LoadOracle(ModelCase modelCase)
@@ -121,6 +144,3 @@ public sealed class OracleCase
     public string text { get; set; } = "";
     public List<double> embedding { get; set; } = new();
 }
-
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1032")]
-public sealed class SkipException(string message) : Exception(message);
