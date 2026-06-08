@@ -43,6 +43,26 @@ corresponding `Microsoft.ML.Tokenizers` tokenizer:
 All tokenizers encode without special tokens, remove unknown-token ids before
 pooling, and apply Model2Vec pre-truncation and final `maxLength` truncation.
 
+## Scope: inference only
+
+Model2Vec.Net implements the **inference** half of Model2Vec — loading a distilled
+static model and encoding text. It deliberately does **not** include model
+**distillation or training**:
+
+- Distilling a new static model from a teacher sentence-transformer (forward-passing
+  the vocabulary, PCA dimensionality reduction, and Zipf/SIF weighting).
+- The `tokenlearn` corpus post-training step and classifier-head training
+  (`model2vec.train`, `model2vec.distill`).
+
+**Why these are out of scope:** distillation and training require running a full
+transformer encoder and an autodiff/optimizer training loop. In .NET that means
+taking a **native deep-learning dependency** (ONNX Runtime or libtorch), which would
+break this package's defining property: pure-managed with **no native dependency**.
+Distillation is also a one-time, offline, GPU-friendly step — you produce a model
+once with the upstream Python tooling and load the resulting `model.safetensors`
+here. If managed distillation is ever needed it belongs in a **separate** package
+built on a DL runtime, keeping this inference core small and dependency-free.
+
 ## Usage
 
 ```csharp

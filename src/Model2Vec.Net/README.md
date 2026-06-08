@@ -49,6 +49,19 @@ float[][] embeddings = model.Encode([
 
 `Model2VecModel` is immutable after loading and safe to share across threads.
 
+## Scope: inference only
+
+This package loads a distilled Model2Vec static model and encodes text. It does
+**not** distill or train models — that is, it does not forward-pass a teacher
+sentence-transformer over a vocabulary, run PCA, apply Zipf/SIF weighting, or run
+the `tokenlearn`/classifier training steps.
+
+**Why:** those steps require a full transformer encoder plus an autodiff/optimizer
+training loop, which in .NET means a **native deep-learning dependency** (ONNX
+Runtime or libtorch). That would break this package's pure-managed, no-native-dependency
+design. Distillation is a one-time offline step — create the model once with the
+upstream Python tooling and load the resulting `model.safetensors` here.
+
 ## Getting a model
 
 Models are published on Hugging Face and are **not** bundled with this package.
