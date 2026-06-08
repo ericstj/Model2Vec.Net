@@ -6,7 +6,7 @@ namespace Model2VecNet;
 /// <summary>
 /// Loads and runs Model2Vec static embedding models.
 /// </summary>
-public sealed class Model2VecModel
+public sealed partial class Model2VecModel
 {
     private readonly float[] _embeddings;
     private readonly float[]? _weights;
