@@ -217,6 +217,11 @@ internal sealed class PrecompiledNormalizer : TextNormalizer
         Span<int> lengths = stackalloc int[MaxTrieResults];
         Span<int> values = stackalloc int[MaxTrieResults];
         int count = CommonPrefixSearch(input, lengths, values);
+        if (count > lengths.Length)
+        {
+            count = lengths.Length;
+        }
+
         for (int k = 0; k < count; k++)
         {
             if (longestLength == 0 || lengths[k] > longestLength)
@@ -273,6 +278,8 @@ internal sealed class PrecompiledNormalizer : TextNormalizer
 
     private static uint Value(uint unit) => unit & ((1U << 31) - 1);
 
+    // Bit 31 is intentionally retained so leaf units yield an out-of-range label that never
+    // matches a byte key, which is how darts-clone distinguishes leaves during traversal.
     private static uint Label(uint unit) => unit & ((1U << 31) | 0xFF);
 
     private static uint Offset(uint unit) => (unit >> 10) << (int)((unit & (1U << 9)) >> 6);

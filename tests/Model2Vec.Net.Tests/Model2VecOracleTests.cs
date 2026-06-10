@@ -99,6 +99,12 @@ public sealed class Model2VecOracleTests
         Assert.Equal([461602, 3219], Tokenize(dir, "你好世界"));
         Assert.Equal([103330, 5, 37636, 254776, 709], Tokenize(dir, "Numbers 123 456!"));
         Assert.Equal([1811, 18452, 11371], Tokenize(dir, "Привет мир"));
+
+        // Added tokens are matched on the raw text before normalization; [UNK] (id 1) is then
+        // stripped as an unknown-token id while [PAD] (id 0) is retained.
+        Assert.Equal([250643, 0, 8997], Tokenize(dir, "hello [PAD] world"));
+        Assert.Equal([8, 874], Tokenize(dir, "a [UNK] b"));
+        Assert.Equal([1020, 111], Tokenize(dir, "x[UNK]y"));
     }
 
     private static string ModelPath(ModelCase modelCase)
