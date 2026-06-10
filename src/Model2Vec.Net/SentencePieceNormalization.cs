@@ -156,6 +156,11 @@ internal sealed class PrecompiledNormalizer : TextNormalizer
         }
 
         uint trieSize = (uint)(blob[0] | (blob[1] << 8) | (blob[2] << 16) | (blob[3] << 24));
+        if (trieSize < sizeof(uint) || trieSize % sizeof(uint) != 0)
+        {
+            throw new InvalidDataException("Precompiled charsmap trie size must be a non-zero multiple of 4 bytes.");
+        }
+
         if (trieSize >= blob.Length - sizeof(uint))
         {
             throw new InvalidDataException("Precompiled charsmap trie size exceeds the blob size.");
