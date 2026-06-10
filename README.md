@@ -38,9 +38,13 @@ corresponding `Microsoft.ML.Tokenizers` tokenizer:
   and maximum input characters per word.
 - `BPE`: `BpeTokenizer`. Byte-level BPE tokenizers are supported, including
   GPT-2/Roberta byte-to-unicode preprocessing and `add_prefix_space`.
-- `Unigram`: supported when a SentencePiece `.model` file is present alongside
-  `tokenizer.json`; Hugging Face JSON-only Unigram vocabularies require follow-up
-  support because `Microsoft.ML.Tokenizers` 2.0.0 loads SentencePiece from `.model`.
+- `Unigram`: `SentencePieceTokenizer`. Loaded directly from a SentencePiece `.model`
+  file when present alongside `tokenizer.json`. Hugging Face JSON-only Unigram
+  vocabularies are also supported: the `[piece, score]` vocabulary is reconstructed
+  into a SentencePiece model for Viterbi decoding, and the tokenizer.json normalizer
+  chain (precompiled charsmap, `Replace`, `Strip`, `Sequence`, `Lowercase`) is applied
+  in managed code beforehand. This covers the bge-m3 family used by
+  `potion-multilingual-128M`.
 
 All tokenizers encode without special tokens, remove unknown-token ids before
 pooling, and apply Model2Vec pre-truncation and final `maxLength` truncation.
@@ -95,6 +99,7 @@ The test suite downloads:
 
 - `minishlab/potion-base-2M`
 - `Jarbas/ovos-model2vec-intents-distilroberta-base-ca-v2`
+- `minishlab/potion-multilingual-128M`
 - `model.safetensors`
 - `tokenizer.json`
 - `config.json`
@@ -107,7 +112,7 @@ dotnet test -c Release
 ```
 
 The oracle tests compare .NET embeddings against Python `model2vec` outputs for
-the WordPiece and BPE test models with element-wise tolerance `1e-4`.
+the WordPiece, BPE, and Unigram test models with element-wise tolerance `1e-4`.
 
 ## Benchmarks
 

@@ -23,6 +23,7 @@
   <ItemGroup>
     <None Include="oracle_potion_base_2m.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="oracle_distilroberta_base_ca_v2.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="oracle_potion_multilingual_128m.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -30,6 +31,8 @@
     <PotionModelBaseUrl>https://huggingface.co/minishlab/potion-base-2M/resolve/389b9f64be5aa4ae7a6bc6fe95ef20ce485ae5da</PotionModelBaseUrl>
     <DistilRobertaModelDir>$(MSBuildProjectDirectory)\models\distilroberta-base-ca-v2</DistilRobertaModelDir>
     <DistilRobertaModelBaseUrl>https://huggingface.co/Jarbas/ovos-model2vec-intents-distilroberta-base-ca-v2/resolve/bfea823ba8fc6d9585109092faace9485ff0d5b2</DistilRobertaModelBaseUrl>
+    <PotionMultilingualModelDir>$(MSBuildProjectDirectory)\models\potion-multilingual-128M</PotionMultilingualModelDir>
+    <PotionMultilingualModelBaseUrl>https://huggingface.co/minishlab/potion-multilingual-128M/resolve/73908c3438cf03b6a01bcb9611d62b23d0726f08</PotionMultilingualModelBaseUrl>
     <BgeM3TokenizerDir>$(MSBuildProjectDirectory)\models\bge-m3-tokenizer</BgeM3TokenizerDir>
     <BgeM3BaseUrl>https://huggingface.co/BAAI/bge-m3/resolve/5617a9f61b028005a4858fdac845db406aefb181</BgeM3BaseUrl>
   </PropertyGroup>
@@ -65,11 +68,29 @@
                   DestinationFolder="$(DistilRobertaModelDir)"
                   DestinationFileName="config.json"
                   Retries="2" />
+    <DownloadFile Condition="!Exists('$(PotionMultilingualModelDir)\model.safetensors')"
+                  SourceUrl="$(PotionMultilingualModelBaseUrl)/model.safetensors"
+                  DestinationFolder="$(PotionMultilingualModelDir)"
+                  DestinationFileName="model.safetensors"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(PotionMultilingualModelDir)\tokenizer.json')"
+                  SourceUrl="$(PotionMultilingualModelBaseUrl)/tokenizer.json"
+                  DestinationFolder="$(PotionMultilingualModelDir)"
+                  DestinationFileName="tokenizer.json"
+                  Retries="2" />
+    <DownloadFile Condition="!Exists('$(PotionMultilingualModelDir)\config.json')"
+                  SourceUrl="$(PotionMultilingualModelBaseUrl)/config.json"
+                  DestinationFolder="$(PotionMultilingualModelDir)"
+                  DestinationFileName="config.json"
+                  Retries="2" />
     <Copy SourceFiles="$(PotionModelDir)\model.safetensors;$(PotionModelDir)\tokenizer.json;$(PotionModelDir)\config.json"
           DestinationFolder="$(OutDir)models\potion-base-2M"
           SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(DistilRobertaModelDir)\model.safetensors;$(DistilRobertaModelDir)\tokenizer.json;$(DistilRobertaModelDir)\config.json"
           DestinationFolder="$(OutDir)models\distilroberta-base-ca-v2"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(PotionMultilingualModelDir)\model.safetensors;$(PotionMultilingualModelDir)\tokenizer.json;$(PotionMultilingualModelDir)\config.json"
+          DestinationFolder="$(OutDir)models\potion-multilingual-128M"
           SkipUnchangedFiles="true" />
     <DownloadFile Condition="!Exists('$(BgeM3TokenizerDir)\tokenizer.json')"
                   SourceUrl="$(BgeM3BaseUrl)/tokenizer.json"
