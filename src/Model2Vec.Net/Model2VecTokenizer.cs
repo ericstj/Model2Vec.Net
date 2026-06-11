@@ -14,6 +14,8 @@ internal sealed class Model2VecTokenizer
     private readonly bool _byteLevelBpe;
     private readonly bool _addPrefixSpace;
     private readonly Dictionary<string, int>? _unigramVocab;
+    private readonly TextNormalizer? _unigramNormalizer;
+    private readonly IReadOnlyList<KeyValuePair<string, int>>? _unigramAddedTokens;
 
     private Model2VecTokenizer(
         Tokenizer tokenizer,
@@ -22,7 +24,9 @@ internal sealed class Model2VecTokenizer
         int medianTokenLength,
         bool byteLevelBpe = false,
         bool addPrefixSpace = false,
-        Dictionary<string, int>? unigramVocab = null)
+        Dictionary<string, int>? unigramVocab = null,
+        TextNormalizer? unigramNormalizer = null,
+        IReadOnlyDictionary<string, int>? unigramAddedTokens = null)
     {
         _tokenizer = tokenizer;
         VocabularyCount = vocabularyCount;
@@ -31,6 +35,13 @@ internal sealed class Model2VecTokenizer
         _byteLevelBpe = byteLevelBpe;
         _addPrefixSpace = addPrefixSpace;
         _unigramVocab = unigramVocab;
+        _unigramNormalizer = unigramNormalizer;
+
+        // Match Hugging Face: special added tokens are matched on raw text before
+        // normalization, longest content first so overlapping tokens prefer the longer match.
+        _unigramAddedTokens = unigramAddedTokens is { Count: > 0 }
+            ? unigramAddedTokens.OrderByDescending(static pair => pair.Key.Length).ToArray()
+            : null;
     }
 
     public int VocabularyCount { get; }
@@ -68,17 +79,7 @@ internal sealed class Model2VecTokenizer
         IReadOnlyList<int> encodedIds;
         if (_unigramVocab is not null)
         {
-            IReadOnlyList<EncodedToken> tokens = _tokenizer.EncodeToTokens(text, out _, considerPreTokenization: true, considerNormalization: true);
-            var mapped = new List<int>(tokens.Count);
-            foreach (EncodedToken token in tokens)
-            {
-                if (_unigramVocab.TryGetValue(token.Value, out int id))
-                {
-                    mapped.Add(id);
-                }
-            }
-
-            encodedIds = mapped;
+            encodedIds = EncodeUnigram(text);
         }
         else
         {
@@ -102,6 +103,78 @@ internal sealed class Model2VecTokenizer
         }
 
         return ids.ToArray();
+    }
+
+    private List<int> EncodeUnigram(string text)
+    {
+        var ids = new List<int>();
+        if (_unigramAddedTokens is null)
+        {
+            EncodeUnigramSegment(text.AsSpan(), ids);
+            return ids;
+        }
+
+        int start = 0;
+        int index = 0;
+        while (index < text.Length)
+        {
+            int matchId = MatchAddedToken(text, index, out int matchLength);
+            if (matchLength == 0)
+            {
+                index++;
+                continue;
+            }
+
+            EncodeUnigramSegment(text.AsSpan(start, index - start), ids);
+            ids.Add(matchId);
+            index += matchLength;
+            start = index;
+        }
+
+        EncodeUnigramSegment(text.AsSpan(start), ids);
+        return ids;
+    }
+
+    private void EncodeUnigramSegment(ReadOnlySpan<char> segment, List<int> ids)
+    {
+        if (segment.IsEmpty)
+        {
+            return;
+        }
+
+        string text = segment.ToString();
+        string encodeText = _unigramNormalizer is null ? text : _unigramNormalizer.Normalize(text);
+        IReadOnlyList<EncodedToken> tokens = _tokenizer.EncodeToTokens(encodeText, out _, considerPreTokenization: true, considerNormalization: true);
+        foreach (EncodedToken token in tokens)
+        {
+            if (_unigramVocab!.TryGetValue(token.Value, out int id))
+            {
+                ids.Add(id);
+            }
+        }
+    }
+
+    private int MatchAddedToken(string text, int index, out int matchLength)
+    {
+        matchLength = 0;
+        if (_unigramAddedTokens is null)
+        {
+            return 0;
+        }
+
+        foreach (KeyValuePair<string, int> added in _unigramAddedTokens)
+        {
+            string content = added.Key;
+            if (content.Length > 0 &&
+                index + content.Length <= text.Length &&
+                text.AsSpan(index, content.Length).SequenceEqual(content))
+            {
+                matchLength = content.Length;
+                return added.Value;
+            }
+        }
+
+        return 0;
     }
 
     private static Model2VecTokenizer CreateWordPiece(JsonElement root, JsonElement model, Dictionary<string, int> vocab, HashSet<int> unknownTokenIds)
@@ -178,14 +251,52 @@ internal sealed class Model2VecTokenizer
             .Select(name => Path.Combine(directory, name))
             .FirstOrDefault(File.Exists);
 
-        if (sentencePieceModel is null)
+        if (sentencePieceModel is not null)
         {
-            throw new NotSupportedException("Unigram tokenizer.json files require a SentencePiece .model file for Microsoft.ML.Tokenizers 2.0.0.");
+            using FileStream stream = File.OpenRead(sentencePieceModel);
+            SentencePieceTokenizer fileTokenizer = SentencePieceTokenizer.Create(stream, addBeginningOfSentence: false, addEndOfSentence: false, ReadSpecialTokens(root));
+            return new Model2VecTokenizer(fileTokenizer, vocab.Count, unknownTokenIds, MedianTokenLength(vocab), unigramVocab: vocab);
         }
 
-        using FileStream stream = File.OpenRead(sentencePieceModel);
-        SentencePieceTokenizer tokenizer = SentencePieceTokenizer.Create(stream, addBeginningOfSentence: false, addEndOfSentence: false, ReadSpecialTokens(root));
-        return new Model2VecTokenizer(tokenizer, vocab.Count, unknownTokenIds, MedianTokenLength(vocab), unigramVocab: vocab);
+        return CreateUnigramFromJson(root, model, vocab, unknownTokenIds);
+    }
+
+    private static Model2VecTokenizer CreateUnigramFromJson(JsonElement root, JsonElement model, Dictionary<string, int> vocab, HashSet<int> unknownTokenIds)
+    {
+        JsonElement vocabElement = model.GetProperty("vocab");
+        if (vocabElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new NotSupportedException("Unigram tokenizers require a [piece, score] vocabulary array.");
+        }
+
+        int count = vocabElement.GetArrayLength();
+        var pieces = new string[count];
+        var scores = new float[count];
+        int id = 0;
+        foreach (JsonElement entry in vocabElement.EnumerateArray())
+        {
+            pieces[id] = entry[0].GetString() ?? "";
+            scores[id] = (float)entry[1].GetDouble();
+            id++;
+        }
+
+        int unkId = model.TryGetProperty("unk_id", out JsonElement unk) && unk.ValueKind == JsonValueKind.Number
+            ? unk.GetInt32()
+            : throw new NotSupportedException("JSON-only Unigram tokenizers require a model.unk_id.");
+
+        // model.unk_id defines the Unigram unknown piece, which must be removed before pooling
+        // even when its piece string is not also discoverable via unk_token / "[UNK]".
+        unknownTokenIds.Add(unkId);
+
+        byte[] modelProto = SentencePieceModelProtoBuilder.Build(pieces, scores, unkId);
+        using var protoStream = new MemoryStream(modelProto);
+        SentencePieceTokenizer tokenizer = SentencePieceTokenizer.Create(protoStream, addBeginningOfSentence: false, addEndOfSentence: false);
+
+        TextNormalizer? normalizer = root.TryGetProperty("normalizer", out JsonElement normalizerElement) && normalizerElement.ValueKind != JsonValueKind.Null
+            ? TextNormalizer.Parse(normalizerElement)
+            : null;
+
+        return new Model2VecTokenizer(tokenizer, vocab.Count, unknownTokenIds, MedianTokenLength(vocab), unigramVocab: vocab, unigramNormalizer: normalizer, unigramAddedTokens: ReadSpecialTokens(root));
     }
 
     private static Dictionary<string, int> ReadVocabulary(JsonElement vocabElement)

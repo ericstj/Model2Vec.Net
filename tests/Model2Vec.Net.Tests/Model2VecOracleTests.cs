@@ -11,7 +11,8 @@ public sealed class Model2VecOracleTests
     public static TheoryData<ModelCase> Models => new()
     {
         new ModelCase("potion-base-2M", "oracle_potion_base_2m.json", "MODEL2VEC_POTION_BASE_2M"),
-        new ModelCase("distilroberta-base-ca-v2", "oracle_distilroberta_base_ca_v2.json", "MODEL2VEC_DISTILROBERTA_BASE_CA_V2")
+        new ModelCase("distilroberta-base-ca-v2", "oracle_distilroberta_base_ca_v2.json", "MODEL2VEC_DISTILROBERTA_BASE_CA_V2"),
+        new ModelCase("potion-multilingual-128M", "oracle_potion_multilingual_128m.json", "MODEL2VEC_POTION_MULTILINGUAL_128M")
     };
 
     [SkippableTheory]
@@ -84,6 +85,26 @@ public sealed class Model2VecOracleTests
         Assert.Equal([6, 124084, 3221], Tokenize(dir, "你好世界"));
         Assert.Equal([103332, 7, 37638, 6, 121317, 38], Tokenize(dir, "Numbers 123 456!"));
         Assert.Equal([1813, 18454, 11373], Tokenize(dir, "Привет мир"));
+    }
+
+    [SkippableFact]
+    public void JsonOnlyUnigramTokenizerMatchesReference()
+    {
+        var multilingual = new ModelCase("potion-multilingual-128M", "oracle_potion_multilingual_128m.json", "MODEL2VEC_POTION_MULTILINGUAL_128M");
+        string dir = ModelPath(multilingual);
+
+        Assert.Equal([35376, 8997], Tokenize(dir, "Hello world"));
+        Assert.Equal([91904, 3305, 709], Tokenize(dir, "Olá mundo!"));
+        Assert.Equal([26214, 15152, 13944], Tokenize(dir, "café déjà vu"));
+        Assert.Equal([461602, 3219], Tokenize(dir, "你好世界"));
+        Assert.Equal([103330, 5, 37636, 254776, 709], Tokenize(dir, "Numbers 123 456!"));
+        Assert.Equal([1811, 18452, 11371], Tokenize(dir, "Привет мир"));
+
+        // Added tokens are matched on the raw text before normalization; [UNK] (id 1) is then
+        // stripped as an unknown-token id while [PAD] (id 0) is retained.
+        Assert.Equal([250643, 0, 8997], Tokenize(dir, "hello [PAD] world"));
+        Assert.Equal([8, 874], Tokenize(dir, "a [UNK] b"));
+        Assert.Equal([1020, 111], Tokenize(dir, "x[UNK]y"));
     }
 
     private static string ModelPath(ModelCase modelCase)

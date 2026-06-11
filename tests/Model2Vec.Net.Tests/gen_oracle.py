@@ -32,6 +32,22 @@ MODELS = [
             "",
         ],
     ),
+    (
+        "minishlab/potion-multilingual-128M",
+        "oracle_potion_multilingual_128m.json",
+        [
+            "Hello, how are you doing today?",
+            "The quick brown fox jumps over the lazy dog.",
+            "Model2Vec turns token embeddings into fast sentence vectors.",
+            "Bonjour, comment allez-vous aujourd'hui?",
+            "Hola, ¿cómo estás hoy?",
+            "Привет, как у тебя дела сегодня?",
+            "こんにちは、お元気ですか。",
+            "你好，今天过得怎么样？",
+            "Numbers 123 456, punctuation, and MIXED case!",
+            "",
+        ],
+    ),
 ]
 
 for model_name, oracle_file, sentences in MODELS:
