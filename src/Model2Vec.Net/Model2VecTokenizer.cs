@@ -37,8 +37,8 @@ internal sealed class Model2VecTokenizer
         _unigramVocab = unigramVocab;
         _unigramNormalizer = unigramNormalizer;
 
-        // Match Hugging Face: added tokens are matched on raw text before normalization,
-        // longest content first so overlapping tokens prefer the longer match.
+        // Match Hugging Face: special added tokens are matched on raw text before
+        // normalization, longest content first so overlapping tokens prefer the longer match.
         _unigramAddedTokens = unigramAddedTokens is { Count: > 0 }
             ? unigramAddedTokens.OrderByDescending(static pair => pair.Key.Length).ToArray()
             : null;
@@ -108,6 +108,12 @@ internal sealed class Model2VecTokenizer
     private List<int> EncodeUnigram(string text)
     {
         var ids = new List<int>();
+        if (_unigramAddedTokens is null)
+        {
+            EncodeUnigramSegment(text.AsSpan(), ids);
+            return ids;
+        }
+
         int start = 0;
         int index = 0;
         while (index < text.Length)
