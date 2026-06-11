@@ -194,7 +194,11 @@ internal sealed class PrecompiledNormalizer : TextNormalizer
         while (index < input.Length)
         {
             int consumed = NormalizePrefix(input.AsSpan(index), out int valueOffset, out bool replaced);
-            if (replaced)
+
+            // An out-of-range offset means the charsmap is malformed; preserve the original
+            // bytes rather than silently dropping the matched span. A valid offset whose first
+            // byte is the null terminator is a legitimate deletion and is left as an empty span.
+            if (replaced && valueOffset < _normalized.Length)
             {
                 for (int i = valueOffset; i < _normalized.Length && _normalized[i] != 0; i++)
                 {
