@@ -278,6 +278,10 @@ internal sealed class Model2VecTokenizer
             ? unk.GetInt32()
             : throw new NotSupportedException("JSON-only Unigram tokenizers require a model.unk_id.");
 
+        // model.unk_id defines the Unigram unknown piece, which must be removed before pooling
+        // even when its piece string is not also discoverable via unk_token / "[UNK]".
+        unknownTokenIds.Add(unkId);
+
         byte[] modelProto = SentencePieceModelProtoBuilder.Build(pieces, scores, unkId);
         using var protoStream = new MemoryStream(modelProto);
         SentencePieceTokenizer tokenizer = SentencePieceTokenizer.Create(protoStream, addBeginningOfSentence: false, addEndOfSentence: false);
