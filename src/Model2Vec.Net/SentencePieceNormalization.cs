@@ -94,6 +94,9 @@ internal sealed class StripNormalizer(bool stripLeft, bool stripRight) : TextNor
 
 internal sealed class ReplaceNormalizer : TextNormalizer
 {
+    // Bounds the worst-case evaluation time of regexes parsed from untrusted tokenizer.json.
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
+
     private readonly string _content;
     private readonly string? _literal;
     private readonly Regex? _regex;
@@ -118,7 +121,7 @@ internal sealed class ReplaceNormalizer : TextNormalizer
         if (pattern.TryGetProperty("Regex", out JsonElement regex))
         {
             string regexPattern = regex.GetString() ?? throw new InvalidDataException("Replace normalizer has a null Regex pattern.");
-            return new ReplaceNormalizer(literal: null, new Regex(regexPattern, RegexOptions.CultureInvariant), content);
+            return new ReplaceNormalizer(literal: null, new Regex(regexPattern, RegexOptions.CultureInvariant, RegexTimeout), content);
         }
 
         throw new NotSupportedException("Replace normalizer requires a String or Regex pattern.");
@@ -257,6 +260,11 @@ internal sealed class PrecompiledNormalizer : TextNormalizer
         for (int i = 0; i < key.Length; i++)
         {
             nodePos ^= key[i];
+            if ((uint)nodePos >= (uint)_trie.Length)
+            {
+                return numResults;
+            }
+
             unit = _trie[nodePos];
             if (Label(unit) != key[i])
             {
@@ -266,6 +274,11 @@ internal sealed class PrecompiledNormalizer : TextNormalizer
             nodePos ^= (int)Offset(unit);
             if (HasLeaf(unit))
             {
+                if ((uint)nodePos >= (uint)_trie.Length)
+                {
+                    return numResults;
+                }
+
                 if (numResults < lengths.Length)
                 {
                     values[numResults] = (int)Value(_trie[nodePos]);
