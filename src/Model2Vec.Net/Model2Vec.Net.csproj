@@ -16,9 +16,9 @@
 
   <PropertyGroup Label="Packaging">
     <PackageId>Model2Vec.Net</PackageId>
-    <Version>0.1.2</Version>
+    <Version>0.1.3</Version>
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>0.1.1</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>0.1.2</PackageValidationBaselineVersion>
     <Authors>ericstj</Authors>
     <Description>Pure-managed Model2Vec static embedding inference for .NET. Loads safetensors embeddings and Hugging Face tokenizers without native dependencies.</Description>
     <PackageTags>model2vec;embeddings;static-embeddings;nlp;machine-learning;safetensors</PackageTags>
