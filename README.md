@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ericstj/Model2Vec.Net/main/eng/icon.png" alt="Model2Vec.Net logo" width="128" height="128">
+</p>
+
 # Model2Vec.Net
 
 A pure-managed C# port of [MinishLab Model2Vec](https://github.com/MinishLab/model2vec)
